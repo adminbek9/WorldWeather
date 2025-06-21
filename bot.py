@@ -1,10 +1,6 @@
-"""
-World Weather Bot – Ultimate Edition 🌍🌦️
-Telegram bot with visual weather reports and sun times
-"""
 from typing import Final
 import logging
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 import requests
 from telegram import (
@@ -22,24 +18,18 @@ from telegram.ext import (
     filters,
 )
 
-# ────────────────────
-# 🔑 API KEYS
-# ────────────────────
+# 🔑 API kalitlar
 OWM_API_KEY: Final = "48079323ef048b7d7b16eaa6a72dc54a"
 TELEGRAM_TOKEN: Final = "8026735251:AAEBWe-StOeDNDFN4DwAfXqQY7xinpcsBEI"
 
-# ────────────────────
-# 🔧 Logging config
-# ────────────────────
+# 🔧 Loglar
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     level=logging.INFO,
 )
 logger = logging.getLogger(__name__)
 
-# ────────────────────
-# 🌄  Image catalog
-# ────────────────────
+# 🌄 Rasm katalogi
 IMAGE_CATALOG = {
     "hot": "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?auto=format&fit=crop&w=1200&q=80",
     "cold": "https://images.unsplash.com/photo-1478265409131-1f23f2b78f6b?auto=format&fit=crop&w=1200&q=80",
@@ -53,10 +43,7 @@ IMAGE_CATALOG = {
 COLD_THRESHOLD = 5
 HOT_THRESHOLD = 30
 
-# ────────────────────
-# 🔧 Helpers
-# ────────────────────
-
+# 🔧 Yordamchi funksiyalar
 def _select_image(temp: float, main: str) -> str:
     main_l = main.lower()
     if "thunderstorm" in main_l:
@@ -125,26 +112,20 @@ def _weather_keyboard(city: str) -> InlineKeyboardMarkup:
         [[InlineKeyboardButton("🔄 Ob-havoni yangilash", callback_data=f"refresh:{city}")]]
     )
 
-# ────────────────────
-# 🤖 Handlers
-# ────────────────────
-
+# 🤖 Bot handlerlar
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
         "👋 <b>Assalomu alaykum!</b>\n"
         "Men sizga dunyoning istalgan shahridan <i>ob-havo</i> haqida chiroyli tarzda xabar beraman.\n\n"
-        "✍️ Foydalanish: <code>/weather Toshkent</code> yoki boshqa shahar nomini yozing.",
+        "✍️ Faqat shahar nomini yozing: masalan, <code>Toshkent</code>",
         parse_mode="HTML",
     )
 
-async def weather_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not context.args:
-        await update.message.reply_text(
-            "📍 Iltimos, shahar nomini kiriting: /weather <shahar>"
-        )
+async def city_query(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    city = update.message.text.strip()
+    if not city or city.startswith("/"):
         return
 
-    city = " ".join(context.args)
     ok, result = _fetch_weather(city)
     if not ok:
         await update.message.reply_text(result)
@@ -181,18 +162,16 @@ async def refresh_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 async def unknown_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
-        "❓ Bunday buyruq mavjud emas. Foydalanish: /weather <shahar> yoki /start"
+        "❓ Bunday buyruq mavjud emas. Shunchaki shahar nomini yozing: masalan, <code>Andijon</code>",
+        parse_mode="HTML",
     )
 
-# ────────────────────
-# 🚀 Run
-# ────────────────────
-
+# 🚀 Botni ishga tushirish
 def main() -> None:
     app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("weather", weather_cmd))
     app.add_handler(CallbackQueryHandler(refresh_callback))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, city_query))
     app.add_handler(MessageHandler(filters.COMMAND, unknown_cmd))
     logger.info("✅ Bot ishga tushdi…")
     app.run_polling()
